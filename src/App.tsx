@@ -692,6 +692,27 @@ export default function App() {
     }
   };
 
+  const handleGoogleDisconnect = () => {
+    askConfirmation(
+      'ផ្តាច់ការភ្ជាប់ Google Sheets (Disconnect Google Sheets)',
+      'តើអ្នកចង់ផ្តាច់គណនី Google Sheets មែនទេ? (Are you sure you want to disconnect Google Sheets?)',
+      async () => {
+        try {
+          await logoutUser();
+        } catch (e) {
+          console.error(e);
+        }
+        setUser(null);
+        setToken(null);
+        localStorage.removeItem('truck_dispatch_google_access_token');
+        localStorage.removeItem('truck_dispatch_spreadsheet_id');
+        localStorage.removeItem('truck_dispatch_spreadsheet_url');
+        setSpreadsheetUrl(null);
+      },
+      'warning'
+    );
+  };
+
   const handleLogout = () => {
     askConfirmation(
       'ចាកចេញពីគណនី (Sign Out)',
@@ -1001,8 +1022,6 @@ export default function App() {
           setCurrentUser({ email: role.email, name: role.name, role: role.role });
           localStorage.setItem('truck_dispatch_current_user', JSON.stringify({ email: role.email, name: role.name, role: role.role }));
         }}
-        onLoginSuccess={handleLoginSuccess}
-        googleUser={user}
       />
     );
   }
@@ -1246,20 +1265,7 @@ export default function App() {
             </>
           )}
 
-          {spreadsheetUrl && isAdmin && (
-            <>
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-6 mb-2 px-2 font-sans">តំណភ្ជាប់ (Links)</div>
-              <a
-                href={spreadsheetUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-3 px-3 py-2.5 text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-bold transition-colors cursor-pointer text-left"
-              >
-                <FileSpreadsheet className="h-4 w-4 text-emerald-600 shrink-0" />
-                <span>បើក Google Sheets</span>
-              </a>
-            </>
-          )}
+
 
           {/* Drive Storage Status Widget */}
           <div className="mt-auto p-3 bg-blue-50/50 rounded-xl border border-blue-100/80">
@@ -1432,6 +1438,9 @@ export default function App() {
                     onResetSettings={handleResetSettings}
                     spreadsheetUrl={spreadsheetUrl}
                     onForcePushAll={handleForcePushAll}
+                    googleUser={user}
+                    onGoogleSignInSuccess={handleLoginSuccess}
+                    onGoogleDisconnect={handleGoogleDisconnect}
                   />
                 )}
               </div>
