@@ -178,17 +178,11 @@ async function initializeHeadersIfEmpty(accessToken: string, spreadsheetId: stri
   ];
   await updateSheetRange(accessToken, spreadsheetId, 'Departures!A1:K1', depHeaders);
 
-  // Check Trips headers
-  const tripRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Trips!A1:A1`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  const tripData = await tripRes.json();
-  if (!tripData.values || tripData.values.length === 0) {
-    const headers = [
-      ['Trip ID', 'Departure ID', 'ស្លាកលេខឡាន (Plate Number)', 'ឈ្មោះផ្លូវ (Route Name)', 'ចម្ងាយ/គម (Distance/KM)', 'ប្រេងផ្តល់ជូន/លីត្រ (Fuel/Liters)', 'រយៈពេលប៉ាន់ស្មាន (Est Duration)', 'អ្នកគ្រប់គ្រង (Dispatcher)', 'ថ្ងៃម៉ោងទៅដល់ជាក់ស្តែង (Actual Arrival Date/Time)', 'តម្លៃឥវ៉ាន់/USD (Cargo Value)', 'ស្ថានភាព (Status)', 'កម្រៃជើងសារ/USD (Commission)']
-    ];
-    await updateSheetRange(accessToken, spreadsheetId, 'Trips!A1', headers);
-  }
+  // Unconditionally update Trips headers
+  const tripHeaders = [
+    ['Trip ID', 'Departure ID', 'ស្លាកលេខឡាន (Plate Number)', 'ឈ្មោះផ្លូវ (Route Name)', 'ចម្ងាយ/គម (Distance/KM)', 'ប្រេងផ្តល់ជូន/លីត្រ (Fuel/Liters)', 'រយៈពេលប៉ាន់ស្មាន (Est Duration)', 'អ្នកគ្រប់គ្រង (Dispatcher)', 'ថ្ងៃម៉ោងទៅដល់ជាក់ស្តែង (Actual Arrival Date/Time)', 'តម្លៃឥវ៉ាន់/USD (Cargo Value)', 'ស្ថានភាព (Status)', 'កម្រៃជើងសារ/USD (Commission)']
+  ];
+  await updateSheetRange(accessToken, spreadsheetId, 'Trips!A1:L1', tripHeaders);
 
   // Check Settings headers
   const settingsRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Settings!A1:A1`, {
@@ -262,7 +256,7 @@ export async function fetchSpreadsheetData(accessToken: string, spreadsheetId: s
       depData.values.forEach((row: any[]) => {
         if (row[0]) { // Check if ID exists
           const statusCandidates = ['Scheduled', 'Dispatched', 'Arrived', 'Cancelled'];
-          const isNewLayout = statusCandidates.includes(row[6]) || (row[6] === '' && statusCandidates.includes(row[7]));
+          const isNewLayout = statusCandidates.includes(row[6]) || !statusCandidates.includes(row[8]);
 
           if (isNewLayout) {
             departures.push({

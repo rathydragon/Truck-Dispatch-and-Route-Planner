@@ -260,6 +260,41 @@ export default function App() {
     );
   };
 
+  const handleForcePushAll = () => {
+    if (!token || !spreadsheetId) return;
+    askConfirmation(
+      'បញ្ជូនទិន្នន័យទៅ Google Sheets (Force Sync to Google Sheets)',
+      'តើអ្នកចង់បញ្ជូនទិន្នន័យបច្ចុប្បន្នទាំងអស់ពីកម្មវិធីទៅជំនួសនៅក្នុង Google Sheets មែនទេ? (Are you sure you want to overwrite all data in Google Sheets with the current app state?)',
+      async () => {
+        setSyncing(true);
+        setSyncError(null);
+        try {
+          // 1. Sync Departures, Trips, Settings
+          await syncSpreadsheetData(token, spreadsheetId, departures, trips, settings);
+          // 2. Sync Cargo Bookings
+          await syncCargoBookingsData(token, spreadsheetId, cargoBookings);
+          // 3. Sync User Roles
+          await syncUserRolesData(token, spreadsheetId, userRoles);
+          
+          setLastSyncedAt(new Date());
+          
+          askConfirmation(
+            'ជោគជ័យ (Success)',
+            'ទិន្នន័យទាំងអស់ត្រូវបានបញ្ជូន និងអាប់ដេតក្នុង Google Sheets រួចរាល់! (All data has been successfully pushed and updated in your Google Sheets!)',
+            () => {},
+            'success'
+          );
+        } catch (err: any) {
+          console.error(err);
+          setSyncError('ការផ្ញើទិន្នន័យទៅ Drive មិនបានជោគជ័យ (Failed to sync with Google Sheets)');
+        } finally {
+          setSyncing(false);
+        }
+      },
+      'warning'
+    );
+  };
+
   const handleUpdateUserRoles = async (newRoles: UserRole[]) => {
     setUserRoles(newRoles);
     if (!token || !spreadsheetId) return;
@@ -1340,6 +1375,7 @@ export default function App() {
                     onUpdateSettings={handleUpdateSettings}
                     onResetSettings={handleResetSettings}
                     spreadsheetUrl={spreadsheetUrl}
+                    onForcePushAll={handleForcePushAll}
                   />
                 )}
               </div>

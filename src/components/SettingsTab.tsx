@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sliders, Truck, User, MapPin, DollarSign, Fuel, Plus, Trash2, RotateCcw, Map, FileSpreadsheet } from 'lucide-react';
+import { Sliders, Truck, User, MapPin, DollarSign, Fuel, Plus, Trash2, RotateCcw, Map, FileSpreadsheet, CloudLightning } from 'lucide-react';
 import { AppSettings } from '../types';
 
 interface SettingsTabProps {
@@ -7,6 +7,7 @@ interface SettingsTabProps {
   onUpdateSettings: (newSettings: AppSettings) => void;
   onResetSettings: () => void;
   spreadsheetUrl?: string | null;
+  onForcePushAll?: () => void;
 }
 
 export default function SettingsTab({
@@ -14,6 +15,7 @@ export default function SettingsTab({
   onUpdateSettings,
   onResetSettings,
   spreadsheetUrl,
+  onForcePushAll,
 }: SettingsTabProps) {
   // Local input states for adding items
   const [newPlate, setNewPlate] = useState('');
@@ -97,15 +99,27 @@ export default function SettingsTab({
               </p>
             </div>
           </div>
-          <a
-            href={spreadsheetUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-sm transition-colors cursor-pointer w-full sm:w-auto justify-center shrink-0"
-          >
-            <FileSpreadsheet className="h-4 w-4" />
-            <span>បើក Google Sheets (Open Sheet)</span>
-          </a>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto shrink-0">
+            {onForcePushAll && (
+              <button
+                onClick={onForcePushAll}
+                className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-sm transition-colors cursor-pointer justify-center"
+                title="បញ្ជូនទិន្នន័យពីទូរស័ព្ទ/កុំព្យូទ័រទៅ Google Drive ឡើងវិញ (Overwrites Google Sheets with local data)"
+              >
+                <CloudLightning className="h-4 w-4" />
+                <span>បញ្ជូនទិន្នន័យទៅ Drive ឡើងវិញ (Force Push All)</span>
+              </button>
+            )}
+            <a
+              href={spreadsheetUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold shadow-sm transition-colors cursor-pointer justify-center"
+            >
+              <FileSpreadsheet className="h-4 w-4" />
+              <span>បើក Google Sheets (Open Sheet)</span>
+            </a>
+          </div>
         </div>
       )}
 
