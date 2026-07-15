@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { User } from 'firebase/auth';
 import { Departure, Trip, AppSettings, UserRole, CargoBooking, UserNotification } from './types';
-import { initAuth, logoutUser } from './lib/firebase';
+import { initAuth, logoutUser, saveStateToFirestore, getStateFromFirestore } from './lib/firebase';
 import { findOrCreateSpreadsheet, fetchSpreadsheetData, syncSpreadsheetData, syncUserRolesData, syncCargoBookingsData } from './lib/driveSheets';
 import AuthScreen from './components/AuthScreen';
 import Dashboard from './components/Dashboard';
@@ -315,6 +315,9 @@ export default function App() {
 
   const handleUpdateUserRoles = async (newRoles: UserRole[]) => {
     setUserRoles(newRoles);
+    // Sync to cloud Firestore
+    await saveStateToFirestore({ userRoles: newRoles });
+
     if (!token || !spreadsheetId) return;
     setSyncing(true);
     setSyncError(null);
@@ -372,6 +375,9 @@ export default function App() {
     };
     setNotifications(prev => [newNotif, ...prev]);
 
+    // Save cargo bookings to cloud Firestore to synchronize across devices
+    await saveStateToFirestore({ cargoBookings: updatedBookings });
+
     if (!token || !spreadsheetId) return;
     setSyncing(true);
     setSyncError(null);
@@ -427,6 +433,9 @@ export default function App() {
       setNotifications(prev => [statusNotif, ...prev]);
     }
 
+    // Save cargo bookings to cloud Firestore to synchronize across devices
+    await saveStateToFirestore({ cargoBookings: updatedBookings });
+
     if (!token || !spreadsheetId) return;
     setSyncing(true);
     setSyncError(null);
@@ -449,6 +458,9 @@ export default function App() {
   const handleDeleteCargoBooking = async (id: string) => {
     const updatedBookings = cargoBookings.filter(b => b.id !== id);
     setCargoBookings(updatedBookings);
+
+    // Save cargo bookings to cloud Firestore to synchronize across devices
+    await saveStateToFirestore({ cargoBookings: updatedBookings });
 
     if (!token || !spreadsheetId) return;
     setSyncing(true);
@@ -520,6 +532,17 @@ export default function App() {
         setCargoBookings(fetchedBookings);
       }
       setLastSyncedAt(new Date());
+
+      // Save to cloud Firestore to share with Standard users
+      await saveStateToFirestore({
+        departures: fetchedDeps,
+        trips: fetchedTrips,
+        settings: fetchedSettings || undefined,
+        userRoles: fetchedRoles || undefined,
+        cargoBookings: fetchedBookings || undefined,
+        spreadsheetId: sheetId,
+        spreadsheetUrl: localStorage.getItem('truck_dispatch_spreadsheet_url')
+      });
     } catch (err: any) {
       console.error(err);
       if (err?.message?.includes('401') || err?.message?.includes('Unauthorized') || err?.message?.includes('expired token')) {
@@ -533,15 +556,48 @@ export default function App() {
     }
   }, [handleAuthExpiry]);
 
-  // Load initial data from Google Sheets if cached
+  // Load initial data from Firestore if available, then fallback to Google Sheets if token cached
   useEffect(() => {
-    const cachedToken = localStorage.getItem('truck_dispatch_google_access_token');
-    const cachedSheetId = localStorage.getItem('truck_dispatch_spreadsheet_id');
-    if (cachedToken && cachedSheetId) {
-      loadDataFromSheets(cachedToken, cachedSheetId);
-    } else {
-      setLoading(false);
-    }
+    const loadInitialCloudState = async () => {
+      try {
+        const cloudState = await getStateFromFirestore();
+        if (cloudState) {
+          console.log('Successfully loaded initial app state from Firestore:', cloudState);
+          if (cloudState.departures) setDepartures(cloudState.departures);
+          if (cloudState.trips) setTrips(cloudState.trips);
+          if (cloudState.settings) {
+            setSettings(cloudState.settings);
+            localStorage.setItem('truck_dispatch_settings', JSON.stringify(cloudState.settings));
+          }
+          if (cloudState.userRoles) {
+            setUserRoles(cloudState.userRoles);
+          }
+          if (cloudState.cargoBookings) {
+            setCargoBookings(cloudState.cargoBookings);
+          }
+          if (cloudState.spreadsheetId) {
+            setSpreadsheetId(cloudState.spreadsheetId);
+            localStorage.setItem('truck_dispatch_spreadsheet_id', cloudState.spreadsheetId);
+          }
+          if (cloudState.spreadsheetUrl) {
+            setSpreadsheetUrl(cloudState.spreadsheetUrl);
+            localStorage.setItem('truck_dispatch_spreadsheet_url', cloudState.spreadsheetUrl);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load initial state from Firestore:', err);
+      } finally {
+        const cachedToken = localStorage.getItem('truck_dispatch_google_access_token');
+        const cachedSheetId = localStorage.getItem('truck_dispatch_spreadsheet_id');
+        if (cachedToken && cachedSheetId) {
+          loadDataFromSheets(cachedToken, cachedSheetId);
+        } else {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadInitialCloudState();
   }, [loadDataFromSheets]);
 
   /**
@@ -702,6 +758,13 @@ export default function App() {
    * Helper function to perform data sync with Google Sheets.
    */
   const syncWithSheets = async (updatedDeps: Departure[], updatedTrips: Trip[], updatedSettings?: AppSettings) => {
+    // Save to Firestore first for instant sharing
+    await saveStateToFirestore({
+      departures: updatedDeps,
+      trips: updatedTrips,
+      settings: updatedSettings || settings,
+    });
+
     if (!token || !spreadsheetId) return;
     setSyncing(true);
     setSyncError(null);
@@ -1101,6 +1164,9 @@ export default function App() {
           }
           const updatedRoles = [...userRoles, role];
           setUserRoles(updatedRoles);
+
+          // Save to Firestore so other devices/standard users can see and log in immediately
+          await saveStateToFirestore({ userRoles: updatedRoles });
           
           const cachedToken = token || localStorage.getItem('truck_dispatch_google_access_token');
           const cachedSheetId = spreadsheetId || localStorage.getItem('truck_dispatch_spreadsheet_id');

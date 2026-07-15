@@ -1,10 +1,12 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User, signOut } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 // Initialize Firebase App
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+export const db = getFirestore(app);
 
 // Configure Google Auth Provider with Google Drive and Sheets scopes
 export const provider = new GoogleAuthProvider();
@@ -88,5 +90,43 @@ export const logoutUser = async () => {
     localStorage.removeItem('truck_dispatch_google_access_token');
   } catch (e) {
     console.error('Failed to remove access token from localStorage:', e);
+  }
+};
+
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+
+export const saveStateToFirestore = async (state: {
+  userRoles?: any[];
+  departures?: any[];
+  trips?: any[];
+  settings?: any;
+  cargoBookings?: any[];
+  spreadsheetId?: string | null;
+  spreadsheetUrl?: string | null;
+}) => {
+  try {
+    const docRef = doc(db, 'truck_dispatch', 'app_state');
+    const cleanState = JSON.parse(JSON.stringify(state)); // ensure serializable
+    await setDoc(docRef, {
+      ...cleanState,
+      lastSyncedAt: new Date().toISOString()
+    }, { merge: true });
+    console.log('Successfully synced state to Firestore.');
+  } catch (e) {
+    console.error('Failed to sync state to Firestore:', e);
+  }
+};
+
+export const getStateFromFirestore = async (): Promise<any | null> => {
+  try {
+    const docRef = doc(db, 'truck_dispatch', 'app_state');
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return docSnap.data();
+    }
+    return null;
+  } catch (e) {
+    console.error('Failed to get state from Firestore:', e);
+    return null;
   }
 };
