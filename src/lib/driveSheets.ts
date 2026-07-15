@@ -249,6 +249,12 @@ export async function fetchSpreadsheetData(accessToken: string, spreadsheetId: s
     const depRes = await fetch(depUrl, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
+    if (!depRes.ok) {
+      if (depRes.status === 401) {
+        throw new Error('Unauthorized or expired token (401)');
+      }
+      throw new Error(`Failed to fetch Departures. Status: ${depRes.status}`);
+    }
     const depData = await depRes.json();
     const departures: Departure[] = [];
 
@@ -297,6 +303,12 @@ export async function fetchSpreadsheetData(accessToken: string, spreadsheetId: s
     const tripRes = await fetch(tripUrl, {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
+    if (!tripRes.ok) {
+      if (tripRes.status === 401) {
+        throw new Error('Unauthorized or expired token (401)');
+      }
+      throw new Error(`Failed to fetch Trips. Status: ${tripRes.status}`);
+    }
     const tripData = await tripRes.json();
     const trips: Trip[] = [];
 
@@ -328,7 +340,12 @@ export async function fetchSpreadsheetData(accessToken: string, spreadsheetId: s
       const settingsRes = await fetch(settingsUrl, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      if (settingsRes.ok) {
+      if (!settingsRes.ok) {
+        if (settingsRes.status === 401) {
+          throw new Error('Unauthorized or expired token (401)');
+        }
+        console.warn(`Failed to fetch Settings. Status: ${settingsRes.status}`);
+      } else {
         const settingsData = await settingsRes.json();
         if (settingsData.values && settingsData.values.length > 0) {
           settings = rowsToSettings(settingsData.values);
@@ -336,6 +353,7 @@ export async function fetchSpreadsheetData(accessToken: string, spreadsheetId: s
       }
     } catch (e) {
       console.warn('Could not fetch settings from Google Sheets (falling back to default/local):', e);
+      if (e instanceof Error && e.message.includes('401')) throw e;
     }
 
     // 4. Fetch UserRoles
@@ -345,7 +363,12 @@ export async function fetchSpreadsheetData(accessToken: string, spreadsheetId: s
       const rolesRes = await fetch(rolesUrl, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      if (rolesRes.ok) {
+      if (!rolesRes.ok) {
+        if (rolesRes.status === 401) {
+          throw new Error('Unauthorized or expired token (401)');
+        }
+        console.warn(`Failed to fetch UserRoles. Status: ${rolesRes.status}`);
+      } else {
         const rolesData = await rolesRes.json();
         if (rolesData.values && rolesData.values.length > 0) {
           userRoles = rolesData.values.map((row: any[]) => ({
@@ -359,6 +382,7 @@ export async function fetchSpreadsheetData(accessToken: string, spreadsheetId: s
       }
     } catch (e) {
       console.warn('Could not fetch user roles from Google Sheets:', e);
+      if (e instanceof Error && e.message.includes('401')) throw e;
     }
 
     // 5. Fetch CargoBookings
@@ -368,7 +392,12 @@ export async function fetchSpreadsheetData(accessToken: string, spreadsheetId: s
       const bookingsRes = await fetch(bookingsUrl, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      if (bookingsRes.ok) {
+      if (!bookingsRes.ok) {
+        if (bookingsRes.status === 401) {
+          throw new Error('Unauthorized or expired token (401)');
+        }
+        console.warn(`Failed to fetch CargoBookings. Status: ${bookingsRes.status}`);
+      } else {
         const bookingsData = await bookingsRes.json();
         if (bookingsData.values && bookingsData.values.length > 0) {
           cargoBookings = bookingsData.values.map((row: any[]) => ({
@@ -387,6 +416,7 @@ export async function fetchSpreadsheetData(accessToken: string, spreadsheetId: s
       }
     } catch (e) {
       console.warn('Could not fetch cargo bookings from Google Sheets:', e);
+      if (e instanceof Error && e.message.includes('401')) throw e;
     }
 
     return { departures, trips, settings, userRoles, cargoBookings };

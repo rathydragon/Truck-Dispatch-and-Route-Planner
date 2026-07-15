@@ -11,8 +11,14 @@ export const provider = new GoogleAuthProvider();
 provider.addScope('https://www.googleapis.com/auth/drive.file');
 provider.addScope('https://www.googleapis.com/auth/spreadsheets');
 
-// In-memory cache for the OAuth access token
-let cachedAccessToken: string | null = null;
+// Persistent and in-memory cache for the OAuth access token
+let cachedAccessToken: string | null = (() => {
+  try {
+    return localStorage.getItem('truck_dispatch_google_access_token');
+  } catch (e) {
+    return null;
+  }
+})();
 let isSigningIn = false;
 
 /**
@@ -51,6 +57,11 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
     }
 
     cachedAccessToken = credential.accessToken;
+    try {
+      localStorage.setItem('truck_dispatch_google_access_token', cachedAccessToken);
+    } catch (e) {
+      console.error('Failed to save access token to localStorage:', e);
+    }
     return { user: result.user, accessToken: cachedAccessToken };
   } catch (error: any) {
     console.error('កំហុសពេលចូលគណនី (Sign in error):', error);
@@ -73,4 +84,9 @@ export const getAccessToken = async (): Promise<string | null> => {
 export const logoutUser = async () => {
   await signOut(auth);
   cachedAccessToken = null;
+  try {
+    localStorage.removeItem('truck_dispatch_google_access_token');
+  } catch (e) {
+    console.error('Failed to remove access token from localStorage:', e);
+  }
 };

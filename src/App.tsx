@@ -286,7 +286,12 @@ export default function App() {
           );
         } catch (err: any) {
           console.error(err);
-          setSyncError('ការផ្ញើទិន្នន័យទៅ Drive មិនបានជោគជ័យ (Failed to sync with Google Sheets)');
+          if (err?.message?.includes('401') || err?.message?.includes('Unauthorized') || err?.message?.includes('expired token')) {
+            setSyncError('សញ្ញាសម្គាល់ការចូលគណនីបានហួសកំណត់។ (OAuth session expired. Please sign in again.)');
+            handleAuthExpiry();
+          } else {
+            setSyncError('ការផ្ញើទិន្នន័យទៅ Drive មិនបានជោគជ័យ (Failed to sync with Google Sheets)');
+          }
         } finally {
           setSyncing(false);
         }
@@ -303,9 +308,14 @@ export default function App() {
     try {
       await syncUserRolesData(token, spreadsheetId, newRoles);
       console.log('User roles successfully updated and synced to Google Sheets.');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setSyncError('មិនអាចរក្សាទុកព័ត៌មានសិទ្ធិអ្នកប្រើប្រាស់ទៅ Google Sheets បានទេ (Failed to sync user roles to Google Sheets)');
+      if (err?.message?.includes('401') || err?.message?.includes('Unauthorized') || err?.message?.includes('expired token')) {
+        setSyncError('សញ្ញាសម្គាល់ការចូលគណនីបានហួសកំណត់។ (OAuth session expired. Please sign in again.)');
+        handleAuthExpiry();
+      } else {
+        setSyncError('មិនអាចរក្សាទុកព័ត៌មានសិទ្ធិអ្នកប្រើប្រាស់ទៅ Google Sheets បានទេ (Failed to sync user roles to Google Sheets)');
+      }
     } finally {
       setSyncing(false);
     }
@@ -355,9 +365,14 @@ export default function App() {
     try {
       await syncCargoBookingsData(token, spreadsheetId, updatedBookings);
       console.log('Cargo booking successfully created and synced.');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setSyncError('មិនអាចរក្សាទុកការកក់អីវ៉ាន់ទៅ Google Sheets បានទេ (Failed to sync cargo bookings)');
+      if (err?.message?.includes('401') || err?.message?.includes('Unauthorized') || err?.message?.includes('expired token')) {
+        setSyncError('សញ្ញាសម្គាល់ការចូលគណនីបានហួសកំណត់។ (OAuth session expired. Please sign in again.)');
+        handleAuthExpiry();
+      } else {
+        setSyncError('មិនអាចរក្សាទុកការកក់អីវ៉ាន់ទៅ Google Sheets បានទេ (Failed to sync cargo bookings)');
+      }
     } finally {
       setSyncing(false);
     }
@@ -405,9 +420,14 @@ export default function App() {
     try {
       await syncCargoBookingsData(token, spreadsheetId, updatedBookings);
       console.log('Cargo booking status updated.');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setSyncError('មិនអាចធ្វើបច្ចុប្បន្នភាពស្ថានភាពទៅ Google Sheets បានទេ (Failed to sync status)');
+      if (err?.message?.includes('401') || err?.message?.includes('Unauthorized') || err?.message?.includes('expired token')) {
+        setSyncError('សញ្ញាសម្គាល់ការចូលគណនីបានហួសកំណត់។ (OAuth session expired. Please sign in again.)');
+        handleAuthExpiry();
+      } else {
+        setSyncError('មិនអាចធ្វើបច្ចុប្បន្នភាពស្ថានភាពទៅ Google Sheets បានទេ (Failed to sync status)');
+      }
     } finally {
       setSyncing(false);
     }
@@ -423,9 +443,14 @@ export default function App() {
     try {
       await syncCargoBookingsData(token, spreadsheetId, updatedBookings);
       console.log('Cargo booking deleted.');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setSyncError('មិនអាចលុបការកក់ចេញពី Google Sheets បានទេ (Failed to delete booking)');
+      if (err?.message?.includes('401') || err?.message?.includes('Unauthorized') || err?.message?.includes('expired token')) {
+        setSyncError('សញ្ញាសម្គាល់ការចូលគណនីបានហួសកំណត់។ (OAuth session expired. Please sign in again.)');
+        handleAuthExpiry();
+      } else {
+        setSyncError('មិនអាចលុបការកក់ចេញពី Google Sheets បានទេ (Failed to delete booking)');
+      }
     } finally {
       setSyncing(false);
     }
@@ -446,6 +471,19 @@ export default function App() {
   const handleClearAllNotifications = () => {
     setNotifications([]);
   };
+
+  const handleAuthExpiry = useCallback(() => {
+    setToken(null);
+    setUser(null);
+    setCurrentUser(null);
+    setNeedsAuth(true);
+    try {
+      localStorage.removeItem('truck_dispatch_google_access_token');
+      localStorage.removeItem('truck_dispatch_current_user');
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
 
   /**
    * Fetch data from Google Sheets.
@@ -470,11 +508,16 @@ export default function App() {
       setLastSyncedAt(new Date());
     } catch (err: any) {
       console.error(err);
-      setSyncError('មិនអាចទាញយកទិន្នន័យពី Google Sheets របស់អ្នកបានទេ (Could not sync data from Google Sheets)');
+      if (err?.message?.includes('401') || err?.message?.includes('Unauthorized') || err?.message?.includes('expired token')) {
+        setSyncError('សញ្ញាសម្គាល់ការចូលគណនីបានហួសកំណត់។ សូមចូលគណនីម្តងទៀត។ (OAuth session expired. Please sign in again.)');
+        handleAuthExpiry();
+      } else {
+        setSyncError('មិនអាចទាញយកទិន្នន័យពី Google Sheets របស់អ្នកបានទេ (Could not sync data from Google Sheets)');
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [handleAuthExpiry]);
 
   /**
    * Trigger authentication check.
@@ -496,7 +539,11 @@ export default function App() {
           await loadDataFromSheets(accessToken, sheetInfo.id);
         } catch (err: any) {
           console.error(err);
-          setSyncError('មិនអាចបង្កើត ឬស្វែងរកឯកសារ Google Sheet បានទេ (Failed to initialize Google Sheet)');
+          if (err?.message?.includes('401') || err?.message?.includes('Unauthorized') || err?.message?.includes('expired token')) {
+            handleAuthExpiry();
+          } else {
+            setSyncError('មិនអាចបង្កើត ឬស្វែងរកឯកសារ Google Sheet បានទេ (Failed to initialize Google Sheet)');
+          }
           setLoading(false);
         }
       },
@@ -507,7 +554,7 @@ export default function App() {
     );
 
     return () => unsubscribe();
-  }, [loadDataFromSheets]);
+  }, [loadDataFromSheets, handleAuthExpiry]);
 
   // Synchronize Google authenticated user with the credential session (currentUser)
   useEffect(() => {
@@ -590,15 +637,19 @@ export default function App() {
         }
         setLastSyncedAt(new Date());
         setSyncError(null);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Real-time background sync failed:', err);
+        if (err?.message?.includes('401') || err?.message?.includes('Unauthorized') || err?.message?.includes('expired token')) {
+          setSyncError('សញ្ញាសម្គាល់ការចូលគណនីបានហួសកំណត់។ (OAuth session expired. Please sign in again.)');
+          handleAuthExpiry();
+        }
       } finally {
         setIsPolling(false);
       }
     }, 5000); // Poll every 5 seconds for real-time updates
 
     return () => clearInterval(intervalId);
-  }, [token, spreadsheetId, isPollingEnabled]);
+  }, [token, spreadsheetId, isPollingEnabled, handleAuthExpiry]);
 
   /**
    * Helper function to perform data sync with Google Sheets.
@@ -612,7 +663,12 @@ export default function App() {
       setLastSyncedAt(new Date());
     } catch (err: any) {
       console.error(err);
-      setSyncError('ការផ្ញើទិន្នន័យទៅ Drive មិនបានជោគជ័យ (Failed to sync with Google Sheets)');
+      if (err?.message?.includes('401') || err?.message?.includes('Unauthorized') || err?.message?.includes('expired token')) {
+        setSyncError('សញ្ញាសម្គាល់ការចូលគណនីបានហួសកំណត់។ (OAuth session expired. Please sign in again.)');
+        handleAuthExpiry();
+      } else {
+        setSyncError('ការផ្ញើទិន្នន័យទៅ Drive មិនបានជោគជ័យ (Failed to sync with Google Sheets)');
+      }
     } finally {
       setSyncing(false);
     }
