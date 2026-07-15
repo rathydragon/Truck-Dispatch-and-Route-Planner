@@ -1092,6 +1092,26 @@ export default function App() {
           setCurrentUser({ email: role.email, name: role.name, role: role.role });
           localStorage.setItem('truck_dispatch_current_user', JSON.stringify({ email: role.email, name: role.name, role: role.role }));
         }}
+        onRegisterCustom={async (role) => {
+          const exists = userRoles.some(
+            (r) => r.email.trim().toLowerCase() === role.email.trim().toLowerCase()
+          );
+          if (exists) {
+            throw new Error('ឈ្មោះគណនី ឬអ៊ីមែលនេះមានរួចហើយ! (This username/email already exists!)');
+          }
+          const updatedRoles = [...userRoles, role];
+          setUserRoles(updatedRoles);
+          
+          const cachedToken = token || localStorage.getItem('truck_dispatch_google_access_token');
+          const cachedSheetId = spreadsheetId || localStorage.getItem('truck_dispatch_spreadsheet_id');
+          if (cachedToken && cachedSheetId) {
+            try {
+              await syncUserRolesData(cachedToken, cachedSheetId, updatedRoles);
+            } catch (e) {
+              console.error('Failed to sync registered user to sheets:', e);
+            }
+          }
+        }}
       />
     );
   }
