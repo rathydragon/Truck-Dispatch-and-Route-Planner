@@ -595,7 +595,7 @@ export default function App() {
       } finally {
         setIsPolling(false);
       }
-    }, 12000); // Poll every 12 seconds for real-time updates
+    }, 5000); // Poll every 5 seconds for real-time updates
 
     return () => clearInterval(intervalId);
   }, [token, spreadsheetId, isPollingEnabled]);
