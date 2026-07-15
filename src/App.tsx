@@ -718,13 +718,6 @@ export default function App() {
       'ចាកចេញពីគណនី (Sign Out)',
       'តើអ្នកចង់ចាកចេញពីប្រព័ន្ធមែនទេ? (Are you sure you want to sign out?)',
       async () => {
-        try {
-          await logoutUser();
-        } catch (e) {
-          console.error(e);
-        }
-        setUser(null);
-        setToken(null);
         setCurrentUser(null);
         localStorage.removeItem('truck_dispatch_current_user');
       },
@@ -1087,7 +1080,7 @@ export default function App() {
           </div>
           <div className="text-left">
             <h1 className="text-sm font-extrabold tracking-tight text-white leading-tight">
-              ប្រព័ន្ធគ្រប់គ្រងជើងតៃកុងឡាន
+              ប្រព័ន្ធគ្រប់គ្រងជើងឡាន
             </h1>
             <p className="text-[9px] text-slate-400 font-medium font-sans">ចាត់ចែងឡាន និងជើងដឹកជញ្ជូន</p>
           </div>

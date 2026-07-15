@@ -71,7 +71,7 @@ export default function AuthScreen({
           </div>
         </div>
         <h2 className="mt-6 text-center text-3xl font-bold tracking-tight text-gray-900 font-sans">
-          ប្រстьянគ្រប់គ្រងការចេញដំណើរឡាន
+          ប្រព័ន្ធគ្រប់គ្រងជើងឡាន
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600 max-w">
           Truck Dispatch & Route Planner

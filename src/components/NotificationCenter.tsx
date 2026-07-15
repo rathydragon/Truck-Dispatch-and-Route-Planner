@@ -296,7 +296,7 @@ export default function NotificationCenter({
               {/* Drawer Footer info */}
               <div className="p-3 border-t border-slate-800 bg-slate-950 text-center shrink-0">
                 <p className="text-[9px] text-slate-500 font-semibold font-sans">
-                  ប្រព័ន្ធគ្រប់គ្រងជើងតៃកុងឡាន &bull; Notification Hub
+                  ប្រព័ន្ធគ្រប់គ្រងជើងឡាន &bull; Notification Hub
                 </p>
               </div>
             </motion.div>

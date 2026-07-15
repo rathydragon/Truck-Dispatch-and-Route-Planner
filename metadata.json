@@ -1,5 +1,5 @@
 {
-  "name": "ប្រព័ន្ធគ្រប់គ្រងជើងតៃកុងឡាន",
+  "name": "ប្រព័ន្ធគ្រប់គ្រងជើងឡាន",
   "description": "កម្មវិធីគ្រប់គ្រងការចេញដំណើរ និងជើងដឹកជញ្ជូនសម្រាប់ឡាន រក្សាទុកក្នុង Google Drive (Departure and Transport Route Planner for vehicles, saved in Google Drive)",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
