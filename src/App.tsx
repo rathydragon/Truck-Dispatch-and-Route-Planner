@@ -63,8 +63,21 @@ export default function App() {
   };
 
   // Auth state
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const saved = localStorage.getItem('truck_dispatch_google_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [token, setToken] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('truck_dispatch_google_access_token');
+    } catch {
+      return null;
+    }
+  });
   const [needsAuth, setNeedsAuth] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ email: string; name: string; role: 'Admin' | 'Standard' } | null>(() => {
     try {
@@ -478,6 +491,7 @@ export default function App() {
     setCurrentUser(null);
     setNeedsAuth(true);
     try {
+      localStorage.removeItem('truck_dispatch_google_user');
       localStorage.removeItem('truck_dispatch_google_access_token');
       localStorage.removeItem('truck_dispatch_current_user');
     } catch (e) {
@@ -519,6 +533,17 @@ export default function App() {
     }
   }, [handleAuthExpiry]);
 
+  // Load initial data from Google Sheets if cached
+  useEffect(() => {
+    const cachedToken = localStorage.getItem('truck_dispatch_google_access_token');
+    const cachedSheetId = localStorage.getItem('truck_dispatch_spreadsheet_id');
+    if (cachedToken && cachedSheetId) {
+      loadDataFromSheets(cachedToken, cachedSheetId);
+    } else {
+      setLoading(false);
+    }
+  }, [loadDataFromSheets]);
+
   /**
    * Trigger authentication check.
    */
@@ -527,6 +552,16 @@ export default function App() {
       async (firebaseUser, accessToken) => {
         setUser(firebaseUser);
         setToken(accessToken);
+        try {
+          const googleUserObj = {
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName,
+            uid: firebaseUser.uid
+          };
+          localStorage.setItem('truck_dispatch_google_user', JSON.stringify(googleUserObj));
+        } catch (e) {
+          console.error(e);
+        }
         setNeedsAuth(false);
         
         // Setup spreadsheet
@@ -549,7 +584,11 @@ export default function App() {
       },
       () => {
         setNeedsAuth(true);
-        setLoading(false);
+        const cachedToken = localStorage.getItem('truck_dispatch_google_access_token');
+        const cachedSheetId = localStorage.getItem('truck_dispatch_spreadsheet_id');
+        if (!cachedToken || !cachedSheetId) {
+          setLoading(false);
+        }
       }
     );
 
@@ -558,6 +597,14 @@ export default function App() {
 
   // Synchronize Google authenticated user with the credential session (currentUser)
   useEffect(() => {
+    try {
+      if (localStorage.getItem('truck_dispatch_manually_logged_out') === 'true') {
+        return;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
     if (user && !currentUser) {
       const googleEmail = user.email || '';
       const googleEmailLower = googleEmail.trim().toLowerCase();
@@ -675,8 +722,21 @@ export default function App() {
   };
 
   const handleLoginSuccess = async (loggedInUser: User, accessToken: string) => {
+    try {
+      localStorage.removeItem('truck_dispatch_manually_logged_out');
+    } catch (e) {}
     setUser(loggedInUser);
     setToken(accessToken);
+    try {
+      const googleUserObj = {
+        email: loggedInUser.email,
+        displayName: loggedInUser.displayName,
+        uid: loggedInUser.uid
+      };
+      localStorage.setItem('truck_dispatch_google_user', JSON.stringify(googleUserObj));
+    } catch (e) {
+      console.error(e);
+    }
     setNeedsAuth(false);
     setLoading(true);
     
@@ -704,6 +764,7 @@ export default function App() {
         }
         setUser(null);
         setToken(null);
+        localStorage.removeItem('truck_dispatch_google_user');
         localStorage.removeItem('truck_dispatch_google_access_token');
         localStorage.removeItem('truck_dispatch_spreadsheet_id');
         localStorage.removeItem('truck_dispatch_spreadsheet_url');
@@ -718,8 +779,13 @@ export default function App() {
       'ចាកចេញពីគណនី (Sign Out)',
       'តើអ្នកចង់ចាកចេញពីប្រព័ន្ធមែនទេ? (Are you sure you want to sign out?)',
       async () => {
+        try {
+          localStorage.setItem('truck_dispatch_manually_logged_out', 'true');
+        } catch (e) {}
         setCurrentUser(null);
-        localStorage.removeItem('truck_dispatch_current_user');
+        try {
+          localStorage.removeItem('truck_dispatch_current_user');
+        } catch (e) {}
       },
       'warning'
     );
@@ -920,6 +986,9 @@ export default function App() {
                         currentUserRoleRecord?.role?.toLowerCase() === 'admin' || 
                         currentUser?.role?.toLowerCase() === 'admin';
     const driverRestriction = currentUserRoleRecord?.assignedDriver || null;
+    const allowedDrivers = driverRestriction 
+      ? driverRestriction.split(',').map(s => s.trim().toLowerCase()).filter(Boolean) 
+      : [];
     const userNameRestriction = currentUserRoleRecord?.name || currentUser?.name || null;
 
     // Filter departures
@@ -929,7 +998,7 @@ export default function App() {
           const dNameLower = d.driverName ? d.driverName.trim().toLowerCase() : '';
           const dispLower = d.dispatcher ? d.dispatcher.trim().toLowerCase() : '';
           
-          const matchDriver = driverRestriction && dNameLower === driverRestriction.trim().toLowerCase();
+          const matchDriver = allowedDrivers.length > 0 && allowedDrivers.includes(dNameLower);
           const matchUserName = userNameRestriction && (dNameLower === userNameRestriction.trim().toLowerCase() || dispLower === userNameRestriction.trim().toLowerCase());
           
           return matchDriver || matchUserName;
@@ -943,7 +1012,12 @@ export default function App() {
           const tDispLower = t.dispatcher ? t.dispatcher.trim().toLowerCase() : '';
           const matchDispatcher = userNameRestriction && tDispLower === userNameRestriction.trim().toLowerCase();
           
-          const matchesDriver = t.plateNumber && departures.find(d => d.plateNumber === t.plateNumber)?.driverName?.toLowerCase() === (driverRestriction || userNameRestriction || '').toLowerCase();
+          const matchesDriver = t.plateNumber && (() => {
+            const dep = departures.find(d => d.plateNumber === t.plateNumber);
+            if (!dep) return false;
+            const depDriverLower = dep.driverName ? dep.driverName.trim().toLowerCase() : '';
+            return allowedDrivers.includes(depDriverLower) || depDriverLower === (userNameRestriction || '').toLowerCase();
+          })();
           
           return matchDispatcher || matchesDriver || allowedDepIds.has(t.departureId);
         });
@@ -957,7 +1031,7 @@ export default function App() {
           const userEmailLower = currentUser?.email ? currentUser.email.trim().toLowerCase() : '';
           
           const matchUserName = userNameRestriction && bUserLower === userNameRestriction.trim().toLowerCase();
-          const matchDriverName = driverRestriction && bUserLower === driverRestriction.trim().toLowerCase();
+          const matchDriverName = allowedDrivers.length > 0 && allowedDrivers.includes(bUserLower);
           const matchCreatorEmail = userEmailLower && bCreatorLower === userEmailLower;
           
           return matchUserName || matchDriverName || matchCreatorEmail;
@@ -1012,6 +1086,9 @@ export default function App() {
       <AuthScreen
         userRoles={userRoles}
         onLoginCustom={(role) => {
+          try {
+            localStorage.removeItem('truck_dispatch_manually_logged_out');
+          } catch (e) {}
           setCurrentUser({ email: role.email, name: role.name, role: role.role });
           localStorage.setItem('truck_dispatch_current_user', JSON.stringify({ email: role.email, name: role.name, role: role.role }));
         }}

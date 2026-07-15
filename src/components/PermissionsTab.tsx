@@ -175,24 +175,96 @@ export default function PermissionsTab({
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1.5">
-                  អ្នកបើកបរដែលត្រូវកំណត់ (Assigned Driver Restriction)
+                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1.5 flex items-center justify-between">
+                  <span>អ្នកបើកបរដែលត្រូវកំណត់ (Assigned Driver Restriction)</span>
+                  {newRoleType !== 'Admin' && settings.driverNames.length > 0 && (
+                    <div className="flex gap-2 font-semibold normal-case">
+                      <button
+                        type="button"
+                        onClick={() => setNewRoleDriver(settings.driverNames.join(', '))}
+                        className="text-blue-600 hover:text-blue-800 text-[10px] cursor-pointer"
+                      >
+                        ជ្រើសរើសទាំងអស់ (All)
+                      </button>
+                      <span className="text-slate-300">|</span>
+                      <button
+                        type="button"
+                        onClick={() => setNewRoleDriver('')}
+                        className="text-slate-500 hover:text-slate-700 text-[10px] cursor-pointer"
+                      >
+                        សម្អាត (Clear)
+                      </button>
+                    </div>
+                  )}
                 </label>
-                <select
-                  disabled={newRoleType === 'Admin'}
-                  value={newRoleDriver}
-                  onChange={(e) => setNewRoleDriver(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500 font-semibold text-slate-800 disabled:bg-slate-50 disabled:text-slate-400"
-                >
-                  <option value="">-- ឃើញទាំងអស់ (All Drivers / No restriction) --</option>
-                  {settings.driverNames.map((driver, idx) => (
-                    <option key={idx} value={driver}>
-                      {driver}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-[10px] text-slate-400 mt-1 font-medium">
-                  * សិទ្ធិ Standard អាចកំណត់ឱ្យឃើញតែទិន្នន័យរបស់អ្នកបើកបរម្នាក់នេះប៉ុណ្ណោះ។
+                
+                {newRoleType === 'Admin' ? (
+                  <div className="text-xs text-slate-400 bg-slate-50 border border-slate-100 rounded-lg p-3 italic">
+                    គណនី Admin មិនត្រូវការកំណត់សិទ្ធិអ្នកបើកបរទេ (Admin accounts have unrestricted access to all driver data)
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {settings.driverNames.length === 0 ? (
+                      <div className="text-xs text-slate-400 bg-slate-50 border border-slate-100 rounded-lg p-3 italic">
+                        សូមកំណត់ឈ្មោះអ្នកបើកបរនៅក្នុង ការកំណត់ប្រព័ន្ធ ជាមុនសិន។ (Please add drivers in System Settings first.)
+                      </div>
+                    ) : (
+                      <>
+                        <div className="max-h-44 overflow-y-auto border border-slate-200 rounded-lg p-2 space-y-1 bg-slate-50/50">
+                          {settings.driverNames.map((driver, idx) => {
+                            const isChecked = (newRoleDriver ? newRoleDriver.split(',').map(s => s.trim()) : []).includes(driver);
+                            return (
+                              <label key={idx} className="flex items-center gap-2.5 p-1.5 hover:bg-white rounded transition-colors cursor-pointer select-none">
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => {
+                                    const current = newRoleDriver ? newRoleDriver.split(',').map(s => s.trim()).filter(Boolean) : [];
+                                    const updated = current.includes(driver)
+                                      ? current.filter(d => d !== driver)
+                                      : [...current, driver];
+                                    setNewRoleDriver(updated.join(', '));
+                                  }}
+                                  className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                />
+                                <span className={`text-xs font-semibold ${isChecked ? 'text-blue-900 font-bold' : 'text-slate-700'}`}>
+                                  {driver}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                        {newRoleDriver ? (
+                          <div className="flex flex-wrap gap-1.5 p-2 bg-blue-50/40 border border-blue-100 rounded-lg">
+                            <span className="text-[10px] font-bold text-blue-700 w-full mb-0.5">អ្នកបើកបរដែលបានជ្រើសរើស ({newRoleDriver.split(',').filter(Boolean).length})៖</span>
+                            {newRoleDriver.split(',').map(s => s.trim()).filter(Boolean).map((d, i) => (
+                              <span key={i} className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-white border border-blue-200 text-blue-700 font-bold rounded-md text-[10px]">
+                                {d}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const current = newRoleDriver.split(',').map(s => s.trim()).filter(Boolean);
+                                    const updated = current.filter(name => name !== d);
+                                    setNewRoleDriver(updated.join(', '));
+                                  }}
+                                  className="text-blue-400 hover:text-blue-600 cursor-pointer"
+                                >
+                                  ×
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-[10px] text-emerald-600 font-bold flex items-center gap-1 bg-emerald-50/50 border border-emerald-100 p-2 rounded-lg">
+                            <span>✓</span> ឃើញទិន្នន័យគ្រប់អ្នកបើកបរទាំងអស់ (All drivers visible)
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+                <p className="text-[10px] text-slate-400 mt-1 font-medium leading-relaxed">
+                  * សិទ្ធិ Standard អាចកំណត់ឱ្យឃើញតែទិន្នន័យរបស់អ្នកបើកបរដែលបានជ្រើសរើសខាងលើនេះប៉ុណ្ណោះ។
                 </p>
               </div>
 
@@ -272,7 +344,13 @@ export default function PermissionsTab({
                           {role.role === 'Admin' ? (
                             <span className="text-slate-400 font-medium text-[11px]">ឃើញគ្រប់យ៉ាង (All Data)</span>
                           ) : role.assignedDriver ? (
-                            <span className="font-bold text-emerald-600">{role.assignedDriver}</span>
+                            <div className="flex flex-wrap gap-1 max-w-[200px]">
+                              {role.assignedDriver.split(',').map((d, i) => (
+                                <span key={i} className="inline-block px-1.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded font-bold text-[10px] font-sans">
+                                  {d.trim()}
+                                </span>
+                              ))}
+                            </div>
                           ) : (
                             <span className="text-slate-500 text-[11px]">ឃើញទាំងអស់ (Unassigned)</span>
                           )}
