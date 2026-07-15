@@ -38,14 +38,6 @@ export default function AuthScreen({
       return;
     }
 
-    // Default admin / admin if there are no roles configured yet
-    if (userRoles.length === 0) {
-      setLoginError(
-        'មិនទាន់មានគណនីក្នុងប្រព័ន្ធឡើយ។ សូមប្រើ ឈ្មោះ៖ "admin" និង ពាក្យសំងាត់៖ "admin" ដើម្បីចូលប្រើលើកដំបូង។ (No accounts found. Use admin/admin to log in.)'
-      );
-      return;
-    }
-
     const foundRole = userRoles.find((r) => r.email.trim().toLowerCase() === uName);
 
     if (!foundRole) {

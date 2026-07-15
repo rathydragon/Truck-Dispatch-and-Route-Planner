@@ -136,6 +136,19 @@ export default function SettingsTab({
         </button>
       </div>
 
+      {/* Default Super Admin Notice Banner */}
+      <div className="bg-amber-50/70 border border-amber-150 rounded-xl p-4 flex gap-3 text-slate-800 animate-fade-in shadow-xs">
+        <ShieldCheck className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+        <div className="space-y-1">
+          <p className="text-xs font-bold text-amber-950 flex items-center gap-1.5 font-sans">
+            គណនីគ្រប់គ្រងជាន់ខ្ពស់លំនាំដើម (Default Super Admin Credentials)
+          </p>
+          <p className="text-[11px] leading-relaxed text-amber-900">
+            អ្នកអាចប្រើប្រាស់គណនី ឈ្មោះ៖ <strong className="font-mono bg-amber-100/80 px-1.5 py-0.5 rounded border border-amber-200">admin</strong> និង ពាក្យសំងាត់៖ <strong className="font-mono bg-amber-100/80 px-1.5 py-0.5 rounded border border-amber-200">admin</strong> ដើម្បីចូលប្រើប្រាស់ជាអ្នកគ្រប់គ្រងជាន់ខ្ពស់ (Super Admin) ក្នុងករណីមិនទាន់មានគណនីផ្សេងទៀតត្រូវបានកំណត់សិទ្ធិ។ (Use <strong className="font-mono font-semibold text-amber-950">admin / admin</strong> to log in as default Admin.)
+          </p>
+        </div>
+      </div>
+
       {/* Google Sheets Sync Integration Section */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
