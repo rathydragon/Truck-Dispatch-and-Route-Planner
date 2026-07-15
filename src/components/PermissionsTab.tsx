@@ -17,6 +17,7 @@ export default function PermissionsTab({
   const [newRoleName, setNewRoleName] = useState('');
   const [newRoleType, setNewRoleType] = useState<'Admin' | 'Standard'>('Standard');
   const [newRoleDriver, setNewRoleDriver] = useState('');
+  const [newRolePassword, setNewRolePassword] = useState('');
   const [editingEmail, setEditingEmail] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -28,7 +29,7 @@ export default function PermissionsTab({
     if (editingEmail) {
       // Editing existing permission
       if (email !== editingEmail.toLowerCase() && userRoles.some((u) => u.email.toLowerCase() === email)) {
-        alert('អ៊ីមែលនេះមានកំណត់សិទ្ធិរួចហើយ (This email already has configured permissions)');
+        alert('ឈ្មោះអ្នកប្រើប្រាស់/អ៊ីមែលនេះមានកំណត់សិទ្ធិរួចហើយ (This username/email already has configured permissions)');
         return;
       }
 
@@ -39,6 +40,7 @@ export default function PermissionsTab({
             name,
             role: newRoleType,
             assignedDriver: newRoleType === 'Standard' && newRoleDriver ? newRoleDriver : undefined,
+            password: newRolePassword.trim(),
           };
         }
         return u;
@@ -50,10 +52,11 @@ export default function PermissionsTab({
       setNewRoleName('');
       setNewRoleType('Standard');
       setNewRoleDriver('');
+      setNewRolePassword('');
     } else {
       // Adding new permission
       if (userRoles.some((u) => u.email.toLowerCase() === email)) {
-        alert('អ៊ីមែលនេះមានកំណត់សិទ្ធិរួចហើយ (This email already has configured permissions)');
+        alert('ឈ្មោះអ្នកប្រើប្រាស់/អ៊ីមែលនេះមានកំណត់សិទ្ធិរួចហើយ (This username/email already has configured permissions)');
         return;
       }
 
@@ -62,6 +65,7 @@ export default function PermissionsTab({
         name,
         role: newRoleType,
         assignedDriver: newRoleType === 'Standard' && newRoleDriver ? newRoleDriver : undefined,
+        password: newRolePassword.trim(),
       };
 
       onUpdateUserRoles([...userRoles, newRole]);
@@ -69,6 +73,7 @@ export default function PermissionsTab({
       setNewRoleName('');
       setNewRoleType('Standard');
       setNewRoleDriver('');
+      setNewRolePassword('');
     }
   };
 
@@ -78,6 +83,7 @@ export default function PermissionsTab({
     setNewRoleName('');
     setNewRoleType('Standard');
     setNewRoleDriver('');
+    setNewRolePassword('');
   };
 
   return (
@@ -106,16 +112,31 @@ export default function PermissionsTab({
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1.5 flex items-center gap-1.5">
-                  <Mail className="h-3.5 w-3.5 text-slate-400" />
-                  អ៊ីមែល (Gmail)
+                  <User className="h-3.5 w-3.5 text-slate-400" />
+                  ឈ្មោះគណនី / អ៊ីមែល (Username / Email)
                 </label>
                 <input
-                  type="email"
+                  type="text"
                   required
-                  placeholder="e.g. driver.gmail@gmail.com"
+                  placeholder="e.g. driver1, admin, rathy@gmail.com"
                   value={newRoleEmail}
                   onChange={(e) => setNewRoleEmail(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500 font-semibold text-slate-800 placeholder:text-slate-400"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500 font-semibold text-slate-800 placeholder:text-slate-400 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1.5 flex items-center gap-1.5">
+                  <Shield className="h-3.5 w-3.5 text-slate-400" />
+                  ពាក្យសំងាត់ (Password)
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. 123456"
+                  value={newRolePassword}
+                  onChange={(e) => setNewRolePassword(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:ring-1 focus:ring-blue-500 font-semibold text-slate-800 placeholder:text-slate-400 font-mono"
                 />
               </div>
 
@@ -223,8 +244,9 @@ export default function PermissionsTab({
               <table className="min-w-full divide-y divide-slate-200 text-left">
                 <thead className="bg-slate-50 text-slate-500 text-[10px] font-bold uppercase">
                   <tr>
-                    <th className="py-2.5 px-3">អ៊ីមែល (Gmail)</th>
-                    <th className="py-2.5 px-3">ឈ្មោះអ្នកប្រើប្រាស់</th>
+                    <th className="py-2.5 px-3">ឈ្មោះអ្នកប្រើ/អ៊ីមែល</th>
+                    <th className="py-2.5 px-3">ឈ្មោះពិត</th>
+                    <th className="py-2.5 px-3">ពាក្យសំងាត់</th>
                     <th className="py-2.5 px-3">សិទ្ធិចូលប្រើ</th>
                     <th className="py-2.5 px-3">អ្នកបើកបរដែលបានកំណត់</th>
                     <th className="py-2.5 px-3 text-right">សកម្មភាព</th>
@@ -236,6 +258,7 @@ export default function PermissionsTab({
                       <tr key={idx} className="hover:bg-slate-50/50">
                         <td className="py-3 px-3 font-mono font-medium text-slate-600">{role.email}</td>
                         <td className="py-3 px-3 font-bold text-slate-900">{role.name}</td>
+                        <td className="py-3 px-3 font-mono text-slate-600 font-bold">{role.password || <span className="text-slate-300 italic text-[10px]">គ្មាន (None)</span>}</td>
                         <td className="py-3 px-3">
                           <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
                             role.role === 'Admin' 
@@ -262,6 +285,7 @@ export default function PermissionsTab({
                               setNewRoleName(role.name);
                               setNewRoleType(role.role);
                               setNewRoleDriver(role.assignedDriver || '');
+                              setNewRolePassword(role.password || '');
                             }}
                             className="text-slate-400 hover:text-blue-500 p-1 rounded hover:bg-blue-50 transition-colors cursor-pointer mr-1.5 inline-flex items-center"
                             title="កែប្រែសិទ្ធិ (Edit Permission)"

@@ -213,17 +213,11 @@ async function initializeHeadersIfEmpty(accessToken: string, spreadsheetId: stri
     await updateSheetRange(accessToken, spreadsheetId, 'Settings!A2', defaultRows);
   }
 
-  // Check UserRoles headers
-  const rolesRes = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/UserRoles!A1:A1`, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  const rolesData = await rolesRes.json();
-  if (!rolesData.values || rolesData.values.length === 0) {
-    const headers = [
-      ['Email (អ៊ីមែល)', 'Name (ឈ្មោះ)', 'Role (សិទ្ធិ)', 'Assigned Driver (ឈ្មោះអ្នកបើកបរ)']
-    ];
-    await updateSheetRange(accessToken, spreadsheetId, 'UserRoles!A1', headers);
-  }
+  // Unconditionally update UserRoles headers
+  const rolesHeaders = [
+    ['Email/Username (អ៊ីមែល ឬ ឈ្មោះអ្នកប្រើ)', 'Name (ឈ្មោះ)', 'Role (សិទ្ធិ)', 'Assigned Driver (ឈ្មោះអ្នកបើកបរ)', 'Password (ពាក្យសំងាត់)']
+  ];
+  await updateSheetRange(accessToken, spreadsheetId, 'UserRoles!A1:E1', rolesHeaders);
 
   // Unconditionally update CargoBookings headers (Link Location at Column I, Photo at J)
   const bookingsHeaders = [
@@ -353,7 +347,7 @@ export async function fetchSpreadsheetData(accessToken: string, spreadsheetId: s
     // 4. Fetch UserRoles
     let userRoles: UserRole[] = [];
     try {
-      const rolesUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/UserRoles!A2:D1000`;
+      const rolesUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/UserRoles!A2:E1000`;
       const rolesRes = await fetch(rolesUrl, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -365,6 +359,7 @@ export async function fetchSpreadsheetData(accessToken: string, spreadsheetId: s
             name: String(row[1] || '').trim(),
             role: (row[2] || 'Standard') as 'Admin' | 'Standard',
             assignedDriver: row[3] ? String(row[3]).trim() : undefined,
+            password: row[4] ? String(row[4]).trim() : undefined,
           })).filter(u => u.email !== '');
         }
       }
@@ -565,7 +560,7 @@ export async function syncUserRolesData(
   userRoles: UserRole[]
 ): Promise<void> {
   try {
-    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/UserRoles!A2:D1000:clear`, {
+    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/UserRoles!A2:E1000:clear`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -576,6 +571,7 @@ export async function syncUserRolesData(
         u.name,
         u.role,
         u.assignedDriver || '',
+        u.password || '',
       ]);
       await updateSheetRange(accessToken, spreadsheetId, 'UserRoles!A2', rows);
     }

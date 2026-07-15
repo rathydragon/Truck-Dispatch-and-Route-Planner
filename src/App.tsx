@@ -66,14 +66,54 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [needsAuth, setNeedsAuth] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{ email: string; name: string; role: 'Admin' | 'Standard' } | null>(() => {
+    try {
+      const saved = localStorage.getItem('truck_dispatch_current_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   
   // Data state
-  const [departures, setDepartures] = useState<Departure[]>([]);
-  const [trips, setTrips] = useState<Trip[]>([]);
-  const [userRoles, setUserRoles] = useState<UserRole[]>([]);
-  const [cargoBookings, setCargoBookings] = useState<CargoBooking[]>([]);
-  const [spreadsheetId, setSpreadsheetId] = useState<string | null>(null);
-  const [spreadsheetUrl, setSpreadsheetUrl] = useState<string | null>(null);
+  const [departures, setDepartures] = useState<Departure[]>(() => {
+    try {
+      const saved = localStorage.getItem('truck_dispatch_departures');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [trips, setTrips] = useState<Trip[]>(() => {
+    try {
+      const saved = localStorage.getItem('truck_dispatch_trips');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [userRoles, setUserRoles] = useState<UserRole[]>(() => {
+    try {
+      const saved = localStorage.getItem('truck_dispatch_user_roles');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [cargoBookings, setCargoBookings] = useState<CargoBooking[]>(() => {
+    try {
+      const saved = localStorage.getItem('truck_dispatch_cargo_bookings');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [spreadsheetId, setSpreadsheetId] = useState<string | null>(() => {
+    return localStorage.getItem('truck_dispatch_spreadsheet_id');
+  });
+  const [spreadsheetUrl, setSpreadsheetUrl] = useState<string | null>(() => {
+    return localStorage.getItem('truck_dispatch_spreadsheet_url');
+  });
 
   // App running states
   const [activeTab, setActiveTab] = useState<'dashboard' | 'departures' | 'trips' | 'bookings' | 'settings' | 'permissions'>('dashboard');
@@ -124,6 +164,38 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('truck_dispatch_notifications', JSON.stringify(notifications));
   }, [notifications]);
+
+  useEffect(() => {
+    localStorage.setItem('truck_dispatch_departures', JSON.stringify(departures));
+  }, [departures]);
+
+  useEffect(() => {
+    localStorage.setItem('truck_dispatch_trips', JSON.stringify(trips));
+  }, [trips]);
+
+  useEffect(() => {
+    localStorage.setItem('truck_dispatch_user_roles', JSON.stringify(userRoles));
+  }, [userRoles]);
+
+  useEffect(() => {
+    localStorage.setItem('truck_dispatch_cargo_bookings', JSON.stringify(cargoBookings));
+  }, [cargoBookings]);
+
+  useEffect(() => {
+    if (spreadsheetId) {
+      localStorage.setItem('truck_dispatch_spreadsheet_id', spreadsheetId);
+    } else {
+      localStorage.removeItem('truck_dispatch_spreadsheet_id');
+    }
+  }, [spreadsheetId]);
+
+  useEffect(() => {
+    if (spreadsheetUrl) {
+      localStorage.setItem('truck_dispatch_spreadsheet_url', spreadsheetUrl);
+    } else {
+      localStorage.removeItem('truck_dispatch_spreadsheet_url');
+    }
+  }, [spreadsheetUrl]);
 
   // Forms state
   const [showDepartureForm, setShowDepartureForm] = useState(false);
@@ -221,7 +293,7 @@ export default function App() {
       zone: bookingData.zone,
       userName: bookingData.userName,
       createdAt: getCambodiaISOString(new Date()),
-      creatorEmail: user?.email || 'anonymous',
+      creatorEmail: currentUser?.email || 'anonymous',
       status: 'Pending',
       linkLocation: bookingData.linkLocation,
     };
@@ -402,6 +474,37 @@ export default function App() {
     return () => unsubscribe();
   }, [loadDataFromSheets]);
 
+  // Synchronize Google authenticated user with the credential session (currentUser)
+  useEffect(() => {
+    if (user && !currentUser) {
+      const googleEmail = user.email || '';
+      const googleEmailLower = googleEmail.trim().toLowerCase();
+      
+      // Look for match in userRoles (either email or username match)
+      const matchingRole = userRoles.find(r => r.email.trim().toLowerCase() === googleEmailLower);
+      
+      if (matchingRole) {
+        const u = { email: matchingRole.email, name: matchingRole.name, role: matchingRole.role };
+        setCurrentUser(u);
+        localStorage.setItem('truck_dispatch_current_user', JSON.stringify(u));
+      } else {
+        // Fallback for rathykim34@gmail.com (owner) or if userRoles has no configuration yet
+        const isOwner = googleEmailLower === 'rathykim34@gmail.com';
+        const hasNoRoles = userRoles.length === 0;
+        
+        if (isOwner || hasNoRoles) {
+          const u = { 
+            email: googleEmail || 'admin', 
+            name: user.displayName || 'អ្នកគ្រប់គ្រង (Admin)', 
+            role: 'Admin' as const 
+          };
+          setCurrentUser(u);
+          localStorage.setItem('truck_dispatch_current_user', JSON.stringify(u));
+        }
+      }
+    }
+  }, [user, currentUser, userRoles]);
+
   // Keep stable reference of departures, trips, tokens, etc. for real-time background sync
   const stateRef = useRef({ departures, trips, settings, userRoles, cargoBookings, token, spreadsheetId, syncing, loading });
   useEffect(() => {
@@ -503,14 +606,15 @@ export default function App() {
       'ចាកចេញពីគណនី (Sign Out)',
       'តើអ្នកចង់ចាកចេញពីប្រព័ន្ធមែនទេ? (Are you sure you want to sign out?)',
       async () => {
-        await logoutUser();
+        try {
+          await logoutUser();
+        } catch (e) {
+          console.error(e);
+        }
         setUser(null);
         setToken(null);
-        setDepartures([]);
-        setTrips([]);
-        setSpreadsheetId(null);
-        setSpreadsheetUrl(null);
-        setNeedsAuth(true);
+        setCurrentUser(null);
+        localStorage.removeItem('truck_dispatch_current_user');
       },
       'warning'
     );
@@ -701,15 +805,17 @@ export default function App() {
 
   // Determine if user has Admin/Standard role and filter departures/trips/bookings
   const { isAdmin, canManage, assignedDriver, allowedDepartures, allowedTrips, allowedBookings, currentUserRoleRecord } = useMemo(() => {
-    const currentUserRoleRecord = user?.email
-      ? userRoles.find((r) => r.email.trim().toLowerCase() === user.email!.trim().toLowerCase())
+    const currentUserRoleRecord = currentUser?.email
+      ? userRoles.find((r) => r.email.trim().toLowerCase() === currentUser.email.trim().toLowerCase())
       : null;
 
-    // If no roles are set up in the sheet yet (brand new system), default first user to Admin so they can configure things.
-    // Otherwise, check if their role is Admin explicitly.
-    const isUserAdmin = userRoles.length === 0 || currentUserRoleRecord?.role?.toLowerCase() === 'admin';
+    // If no roles are set up in the sheet yet (brand new system) or logged in as 'admin', default to Admin.
+    const isUserAdmin = userRoles.length === 0 || 
+                        currentUser?.email === 'admin' || 
+                        currentUserRoleRecord?.role?.toLowerCase() === 'admin' || 
+                        currentUser?.role?.toLowerCase() === 'admin';
     const driverRestriction = currentUserRoleRecord?.assignedDriver || null;
-    const userNameRestriction = currentUserRoleRecord?.name || null;
+    const userNameRestriction = currentUserRoleRecord?.name || currentUser?.name || null;
 
     // Filter departures
     const filteredDeps = isUserAdmin
@@ -743,7 +849,7 @@ export default function App() {
       : cargoBookings.filter((b) => {
           const bUserLower = b.userName ? b.userName.trim().toLowerCase() : '';
           const bCreatorLower = b.creatorEmail ? b.creatorEmail.trim().toLowerCase() : '';
-          const userEmailLower = user?.email ? user.email.trim().toLowerCase() : '';
+          const userEmailLower = currentUser?.email ? currentUser.email.trim().toLowerCase() : '';
           
           const matchUserName = userNameRestriction && bUserLower === userNameRestriction.trim().toLowerCase();
           const matchDriverName = driverRestriction && bUserLower === driverRestriction.trim().toLowerCase();
@@ -761,17 +867,20 @@ export default function App() {
       allowedBookings: filteredBookings,
       currentUserRoleRecord
     };
-  }, [user, userRoles, departures, trips, cargoBookings]);
+  }, [currentUser, userRoles, departures, trips, cargoBookings]);
 
   // Filter notifications based on user name/role
   const userNotifications = useMemo(() => {
-    if (!user) return [];
-    const currentUserRoleRecord = user.email
-      ? userRoles.find((r) => r.email.trim().toLowerCase() === user.email!.trim().toLowerCase())
+    if (!currentUser) return [];
+    const currentUserRoleRecord = currentUser.email
+      ? userRoles.find((r) => r.email.trim().toLowerCase() === currentUser.email.trim().toLowerCase())
       : null;
 
     // Check if user is Admin or if no roles exist yet (defaults to Admin behavior)
-    const isUserAdmin = userRoles.length === 0 || currentUserRoleRecord?.role?.toLowerCase() === 'admin';
+    const isUserAdmin = userRoles.length === 0 || 
+                        currentUser.email === 'admin' || 
+                        currentUserRoleRecord?.role?.toLowerCase() === 'admin' || 
+                        currentUser.role?.toLowerCase() === 'admin';
     
     if (isUserAdmin) {
       return notifications; // Admins can see and manage all notifications
@@ -783,7 +892,7 @@ export default function App() {
 
     // Standard user can only see notifications that are assigned/targeted to their registered Name
     return notifications.filter(n => n.userName?.toLowerCase() === currentUserRoleRecord.name?.toLowerCase());
-  }, [notifications, user, userRoles]);
+  }, [notifications, currentUser, userRoles]);
 
   // Prevent standard users from accessing settings or permissions
   useEffect(() => {
@@ -792,20 +901,30 @@ export default function App() {
     }
   }, [isAdmin, activeTab]);
 
-  // Render Auth screen if required
-  if (needsAuth) {
-    return <AuthScreen onLoginSuccess={handleLoginSuccess} />;
+  // Render Auth screen if user is not logged in via Username / Password
+  if (!currentUser) {
+    return (
+      <AuthScreen
+        userRoles={userRoles}
+        onLoginCustom={(role) => {
+          setCurrentUser({ email: role.email, name: role.name, role: role.role });
+          localStorage.setItem('truck_dispatch_current_user', JSON.stringify({ email: role.email, name: role.name, role: role.role }));
+        }}
+        onLoginSuccess={handleLoginSuccess}
+        googleUser={user}
+      />
+    );
   }
 
   // Check if there is any user explicitly registered in userRoles
   const hasConfiguredRoles = userRoles.length > 0;
   // If roles are configured, the logged-in user MUST have a role record to access the app
-  const isAuthorized = !hasConfiguredRoles || !!currentUserRoleRecord;
+  const isAuthorized = !hasConfiguredRoles || currentUser.email === 'admin' || !!currentUserRoleRecord;
 
   // Render Access Denied if user is logged in but not authorized in UserRoles
-  if (user && !loading && !isAuthorized) {
+  if (currentUser && !isAuthorized) {
     return (
-      <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+      <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 text-left">
         <div className="sm:mx-auto sm:w-full sm:max-w-md animate-fade-in">
           <div className="flex justify-center">
             <div className="p-3 bg-red-100 rounded-2xl shadow-lg border border-red-200 text-red-600">
@@ -825,13 +944,13 @@ export default function App() {
             <div className="text-slate-700 space-y-3">
               <p className="text-xs font-bold text-slate-500 uppercase tracking-widest font-sans">គណនីកំពុងប្រើប្រាស់</p>
               <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 font-mono text-xs text-red-600 font-bold break-all">
-                {user?.email}
+                {currentUser?.email}
               </div>
               <p className="text-sm font-semibold text-slate-700 leading-relaxed">
-                អ៊ីមែល Google (Gmail) របស់អ្នកមិនទាន់មានសិទ្ធិចូលប្រើប្រាស់ក្នុងប្រព័ន្ធនេះទេ។
+                គណនីរបស់អ្នកមិនមានសិទ្ធិចូលប្រើប្រាស់ក្នុងប្រព័ន្ធនេះទេ។
               </p>
               <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                សូមទាក់ទងមកកាន់អ្នកគ្រប់គ្រង (Admin) ដើម្បីបន្ថែមអ៊ីមែលរបស់អ្នកទៅក្នុង «ការគ្រប់គ្រងសិទ្ធិអ្នកប្រើប្រាស់» នៅក្នុងការកំណត់ប្រព័ន្ធ។
+                សូមទាក់ទងមកកាន់អ្នកគ្រប់គ្រង (Admin) ដើម្បីកំណត់សិទ្ធិឡើងវិញនៅក្នុង «ការគ្រប់គ្រងសិទ្ធិអ្នកប្រើប្រាស់»។
               </p>
             </div>
 
@@ -912,7 +1031,7 @@ export default function App() {
           </div>
 
           {/* User Profile Info */}
-          {user && (
+          {currentUser && (
             <div className="flex items-center gap-3">
               {/* Notification Center Bell & Slider */}
               <NotificationCenter
@@ -928,7 +1047,7 @@ export default function App() {
 
               <div className="hidden md:block text-right border-l border-slate-800 pl-3">
                 <span className="text-xs font-bold block leading-none text-white">
-                  {currentUserRoleRecord?.name || user.displayName || (isAdmin ? 'អ្នកគ្រប់គ្រង' : 'អ្នកប្រើប្រាស់')}
+                  {currentUserRoleRecord?.name || currentUser.name || (isAdmin ? 'អ្នកគ្រប់គ្រង' : 'អ្នកប្រើប្រាស់')}
                 </span>
                 <div className="flex items-center justify-end gap-1.5 mt-1">
                   <span className={`text-[8px] px-1 py-0.5 rounded font-bold uppercase shrink-0 ${
@@ -936,13 +1055,11 @@ export default function App() {
                   }`}>
                     {isAdmin ? 'Admin' : 'Standard'}
                   </span>
-                  <span className="text-[9px] text-slate-400 font-sans font-medium">{user.email}</span>
+                  <span className="text-[9px] text-slate-400 font-sans font-medium">{currentUser.email}</span>
                 </div>
               </div>
               <div className={`w-8 h-8 rounded-full text-white flex items-center justify-center font-bold text-xs shadow-inner uppercase ${isAdmin ? 'bg-rose-600' : 'bg-blue-600'}`}>
-                {currentUserRoleRecord?.name 
-                  ? currentUserRoleRecord.name.slice(0, 2) 
-                  : (user.displayName ? user.displayName.slice(0, 2) : (user.email ? user.email.slice(0, 2).toUpperCase() : 'US'))}
+                {(currentUserRoleRecord?.name || currentUser.name || 'US').slice(0, 2)}
               </div>
               <button
                 onClick={handleLogout}
@@ -1206,7 +1323,7 @@ export default function App() {
                     onUpdateBookingStatus={handleUpdateCargoBookingStatus}
                     onDeleteBooking={handleDeleteCargoBooking}
                     canManage={isAdmin}
-                    currentUserEmail={user?.email || ''}
+                    currentUserEmail={currentUser?.email || ''}
                     token={token}
                   />
                 )}
@@ -1267,7 +1384,7 @@ export default function App() {
         <TripForm
           trip={selectedTrip}
           departure={dispatchingDeparture}
-          currentUserEmail={user?.email || 'Dispatcher'}
+          currentUserEmail={currentUser?.email || 'Dispatcher'}
           settings={settings}
           onSave={handleSaveTrip}
           onClose={() => {

@@ -34,6 +34,7 @@ export interface UserRole {
   name: string;
   role: 'Admin' | 'Standard';
   assignedDriver?: string; // Driver Name from driverNames list, or empty for all
+  password?: string;
 }
 
 export interface AppSettings {
